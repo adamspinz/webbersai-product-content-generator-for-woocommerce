@@ -1,8 +1,8 @@
 === Woocommerce AI Product Content Generator ===
 
-Contributors: Spinzsoft.com
+Contributors: webberssai.com
 Tags: Woocommerce, Product Content Generator, AI, Product Tags, Meta Tags, SEO
-Donate link: https://spinzsoft.com/donate
+Donate link: https://webberssai.com/donate
 Requires at least: 6.0
 Tested up to: 6.5.5
 Requires PHP: 7.2

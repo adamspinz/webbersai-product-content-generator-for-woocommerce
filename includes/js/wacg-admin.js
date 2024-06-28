@@ -1,11 +1,11 @@
 /*
 Plugin Name: Woocommerce AI Product Content Generator
-Plugin URI: https://spinzsoft.com
+Plugin URI: https://webberssai.com
 Description: This plugin generates content and meta description for WooCommerce products using AI.
 Tags: Woocommerce, Product Content Generator, AI, Product Tags, Meta Tags, SEO
 Version: 1.0
 Author: adam@spinzsoft.com
-Author URI: https://spinzsoft.com
+Author URI: https://webberssai.com
 License: GPLv2 or later
 */
 jQuery(document).ready(function($) {
