@@ -1,39 +1,23 @@
-/*
-Plugin Name: Woocommerce AI Product Content Generator
-Plugin URI: https://webbersai.com
-Description: This plugin generates content and meta description for WooCommerce products using AI.
-Tags: Woocommerce, Product Content Generator, AI, Product Tags, Meta Tags, SEO
-Version: 1.0
-Author: adam@spinzsoft.com
-Author URI: https://webbersai.com
-License: GPLv2 or later
-*/
 jQuery(document).ready(function($) {
+	const nonces = webbersaicgNonceData;
+								
     $("#generate-content-button").click(function() {
         var title = $("#title").val().trim();
         if (title === '') {
             alert("Please enter a product title.");
             return;
         }
-
-        // Check if product description, short description, and meta tags are already present
-        var description = $("#postdivrich .wp-editor-area").val().trim();
-        var shortDescriptionExists = ($("#postexcerpt .wp-editor-area").val().trim() !== '');
+        var description = getEditorContent("content").trim();
+        var shortDescriptionExists = (getEditorContent("excerpt").trim() !== '');
         var metaTagsExists = ($("#meta-tags-result").text().trim() !== '');
         var metaDescriptionExists = ($("#meta-description-result").text().trim() !== '');
-
         var descriptionExists = (description !== '');
         var descriptionIsShort = (description.length < 100);
-
-        // Show overwrite confirmation dialog if any content exists
         if (descriptionExists || shortDescriptionExists || metaTagsExists || metaDescriptionExists) {
-           // var message = "Existing content found. Do you want to Overwrite?";
-			 var message = "Do you want to Overwrite Existing content?";
+            var message = "Do you want to overwrite existing content?";
             if (descriptionExists && descriptionIsShort) {
-               // message += "\nThe product description is less than 100 characters. Allow AI to regenerate the description based on the existing content?";
-			   message += "\n Allow AI to regenerate the description based on the existing content?";
+                message += "\nAllow AI to regenerate the description based on the existing content?";
             }
-
             $("#overwrite-confirmation").dialog({
                 resizable: false,
                 height: "auto",
@@ -57,28 +41,22 @@ jQuery(document).ready(function($) {
             generateAllContent(false, false);
         }
     });
-//main 
-    function generateAllContent(overwrite, regenerateDescription) {
-        // Show loading icon
-        $("#loading-icon").show();
 
+    function generateAllContent(overwrite, regenerateDescription) {
+        $("#loading-icon").show();
         var postId = $("#post_ID").val();
         var title = $("#title").val();
-
-        // Clear previous messages
         $("#msg").text("");
-
-        // Generate Product Content
         var data = {
-            action: "generate_product_content",
+            action: "webbersaicg_generate_product_content",
             post_id: postId,
             title: title,
-            overwrite: overwrite
+            overwrite: overwrite,
+			security: nonces.webbersaicg_generate_product_content_nonce  // Add nonce here
         };
         if (regenerateDescription) {
-            data.previous_content = $("#postdivrich .wp-editor-area").val().trim();
+            data.previous_content = getEditorContent("content").trim();
         }
-
         $.post(ajaxurl, data, function(response) {
             if (response.success) {
                 updateTinyMCEContent("content", response.data);
@@ -87,26 +65,24 @@ jQuery(document).ready(function($) {
                 $("#msg").append("<p class='error-message'>Failed to generate product description.</p>");
             }
         });
-
-        // Generate Short Description
         $.post(ajaxurl, {
-            action: "generate_short_content",
+            action: "webbersaicg_generate_short_content",
             post_id: postId,
-            title: title
+            title: title,
+			security: nonces.webbersaicg_generate_short_content_nonce
         }, function(response) {
             if (response.success) {
-                $("#postexcerpt .wp-editor-area").val(response.data);
+                updateTinyMCEContent("excerpt", response.data);
                 $("#msg").append("<p id='short-description-msg'>Product Short Description generated successfully.</p>");
             } else {
                 $("#msg").append("<p class='error-message'>Failed to generate short description.</p>");
             }
         });
-		
-		 // Generate Tags
         $.post(ajaxurl, {
-            action: "wacg_generate_product_tags",
+            action: "webbersaicg_generate_product_tags",
             post_id: postId,
-            title: title
+            title: title,
+			security: nonces.webbersaicg_generate_product_tags_nonce
         }, function(response) {
             if (response.success) {
                 var tags = response.data;
@@ -116,15 +92,14 @@ jQuery(document).ready(function($) {
                 $("#msg").append("<p class='error-message'>Failed to generate product tags.</p>");
             }
         });
-		
-        // Generate Meta Tags and Description
-        var content = $("#content").val();
+        var content = getEditorContent("content");
         $.post(ajaxurl, {
-            action: "wacg_generate_meta_tags",
+            action: "webbersaicg_generate_meta_tags",
             post_id: postId,
             post_title: title,
             post_content: content,
-            override_existing: overwrite
+            override_existing: overwrite,
+			security: nonces.webbersaicg_generate_meta_tags_nonce
         }, function(response) {
             $("#loading-icon").hide();
             if (response.success) {
@@ -137,11 +112,7 @@ jQuery(document).ready(function($) {
                 $("#msg").append("<p id='meta-msg'>Product Meta Keywords and Description generated successfully.</p>");
             } else {
                 $("#msg").append("<p class='error-message'>Failed to generate meta tags and description.</p>");
-                //$("#meta-tags-result").text("Failed to generate meta tags.");
-                //$("#meta-description-result").text("Failed to generate meta description.");
             }
-
-            // Arrange messages in the desired order
             arrangeMessages();
         });
     }
@@ -152,14 +123,22 @@ jQuery(document).ready(function($) {
         var descriptionMsg = $("#description-msg").detach();
         var metaMsg = $("#meta-msg").detach();
         var tagsMsg = $("#tags-msg").detach();
-
+        var imgMsg = $("#img-msg").detach();
         msgElement.append(shortDescriptionMsg);
         msgElement.append(descriptionMsg);
         msgElement.append(metaMsg);
         msgElement.append(tagsMsg);
+        msgElement.append(imgMsg);
     }
 
-    // Ensure TinyMCE content updates in both visual and text modes
+    function getEditorContent(editorId) {
+        if (tinymce.get(editorId) && !tinymce.get(editorId).hidden) {
+            return tinymce.get(editorId).getContent();
+        } else {
+            return $("#" + editorId).val();
+        }
+    }
+
     function updateTinyMCEContent(editorId, content) {
         if (tinymce.get(editorId) && !tinymce.get(editorId).hidden) {
             tinymce.get(editorId).setContent(content);
@@ -170,16 +149,15 @@ jQuery(document).ready(function($) {
 
     $("#save-meta-tags-button").click(function() {
         $("#loading-icon").show();
-
         var postId = $("#post_ID").val();
         var metaTags = $("#meta-tags-result").text();
         var metaDescription = $("#meta-description-result").text();
-
         $.post(ajaxurl, {
-            action: "save_meta_tags_description",
+            action: "webbersaicg_save_meta_tags_description",
             post_id: postId,
             meta_tags: metaTags,
-            meta_description: metaDescription
+            meta_description: metaDescription,
+			security: nonces.webbersaicg_save_meta_tags_description_nonce
         }, function(response) {
             $("#loading-icon").hide();
             if (response.success) {
@@ -187,6 +165,39 @@ jQuery(document).ready(function($) {
             } else {
                 $("#savemsg").text("Failed to save meta tags and description.").addClass("error-message");
             }
+        });
+    });
+
+    $("#generate-image-button").click(function() {
+        var postId = $("#post_ID").val();
+        var title = $("#title").val().trim();
+        if (title === '') {
+            alert("Please enter a product title.");
+            return;
+        }
+        $("#loading-icon").show();
+        $("#msg").text("");
+        $.post(ajaxurl, {
+            action: "webbersaicg_generate_product_image",
+            post_id: postId,
+            title: title,
+			security: nonces.webbersaicg_generate_product_image_nonce
+        }, function(response) {
+            $("#loading-icon").hide();
+            if (response.success) {
+                var imageUrl = response.data.image_url;
+				
+                $("#msg").append("<p id='img-msg'>Image generated and set successfully.</p>");
+                if ($('#set-post-thumbnail').length) {
+                    $('#set-post-thumbnail').html('<img src="' + imageUrl + '" alt="Product Image" />');
+                }
+                $("#_thumbnail_id").val(response.data.attachment_id);
+            } else {
+                $("#msg").append("<p class='error-message'>Image generation failed. Select Models (DALL-E-3 or DALL-E-2).</p>");
+            }
+        }).fail(function() {
+            $("#loading-icon").hide();
+            alert('Check Your API Key.');
         });
     });
 });
