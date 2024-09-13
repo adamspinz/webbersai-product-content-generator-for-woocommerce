@@ -1,352 +1,203 @@
 <?php
-/*
-Plugin Name: Woocommerce AI Product Content Generator
-Plugin URI: https://webbersai.com
-Description: This plugin generates content and meta description for WooCommerce products using AI.
-Tags: Woocommerce, Product Content Generator, AI, Product Tags, Meta Tags, SEO
-Version: 1.0
-Author: adam@spinzsoft.com
-Author URI: https://webbersai.com
-License: GPLv2 or later
-*/
+add_action('admin_menu', 'webbersaicg_add_admin_menu');
 
-
-
-// Add the admin settings page
-
-add_action('admin_menu', 'wacg_add_admin_menu');
-
-function wacg_add_admin_menu() {
-
+function webbersaicg_add_admin_menu() {
     add_menu_page(
-
-        __('Woocommerce AI Product Content Generator Settings', 'textdomain'),
-
-        __('Woocommerce AI Product Content Generator', 'textdomain'),
-
+        esc_html__('Webbersai Product Content Generator Settings For Woocommerce', 'webbersai-product-content-generator'),
+        esc_html__('Webbersai Product Content Generator For Woocommerce', 'webbersai-product-content-generator'),
         'manage_options',
-
-        'wacg-settings',
-
-        'wacg_settings_page'
-
+        'webbersaicg-settings',
+        'webbersaicg_settings_page'
     );
-
 }
-
-
 
 // Register settings
+add_action('admin_init', 'webbersaicg_settings_init');
 
-add_action('admin_init', 'wacg_settings_init');
-
-function wacg_settings_init() {
-
-    register_setting('wacg_options_group', 'wacg_options');
-
-
+function webbersaicg_settings_init() {
+    register_setting('webbersaicg_options_group', 'webbersaicg_options', 'webbersaicg_options_sanitize');
 
     add_settings_section(
-
-        'wacg_section',
-
-        __('Settings', 'textdomain'),
-
+        'webbersaicg_section',
+        esc_html__('Settings', 'webbersai-product-content-generator'),
         null,
-
-        'wacg-settings'
-
+        'webbersaicg-settings'
     );
-
-
 
     add_settings_field(
-
-        'wacg_endpoint_url',
-
-        __('Type of AI', 'textdomain'),
-
-        'wacg_endpoint_url_render',
-
-        'wacg-settings',
-
-        'wacg_section'
-
+        'webbersaicg_endpoint_url',
+        esc_html__('Type of AI', 'webbersai-product-content-generator'),
+        'webbersaicg_endpoint_url_render',
+        'webbersaicg-settings',
+        'webbersaicg_section'
     );
-
-	    
-
-	add_settings_field(
-
-        'wacg_api_key',
-
-        __('API Key', 'textdomain'),
-
-        'wacg_api_key_render',
-
-        'wacg-settings',
-
-        'wacg_section'
-
-    );
-
-
-
-	add_settings_field(
-
-        'wacg_ai_model',
-
-        __('AI Model', 'textdomain'),
-
-        'wacg_ai_model_render',
-
-        'wacg-settings',
-
-        'wacg_section'
-
-    );
-
-
-
-
 
     add_settings_field(
-
-        'wacg_language',
-
-        __('Language', 'textdomain'),
-
-        'wacg_language_render',
-
-        'wacg-settings',
-
-        'wacg_section'
-
+        'webbersaicg_api_key',
+        esc_html__('API Key', 'webbersai-product-content-generator'),
+        'webbersaicg_api_key_render',
+        'webbersaicg-settings',
+        'webbersaicg_section'
     );
 
+    add_settings_field(
+        'webbersaicg_organization_id',
+        '',
+        'webbersaicg_organization_id_render',
+        'webbersaicg-settings',
+        'webbersaicg_section'
+    );
 
+    add_settings_field(
+        'webbersaicg_ai_model',
+        esc_html__('AI Model', 'webbersai-product-content-generator'),
+        'webbersaicg_ai_model_render',
+        'webbersaicg-settings',
+        'webbersaicg_section'
+    );
 
+    add_settings_field(
+        'webbersaicg_language',
+        esc_html__('Language', 'webbersai-product-content-generator'),
+        'webbersaicg_language_render',
+        'webbersaicg-settings',
+        'webbersaicg_section'
+    );
 }
 
-
-
 // Sanitize callback function
-
-function wacg_options_sanitize($options) {
-
-    if (empty($options['wacg_api_key'])) {
-
+function webbersaicg_options_sanitize($options) {
+    if (empty($options['webbersaicg_api_key'])) {
         add_settings_error(
-
-            'wacg_options',
-
-            'wacg_api_key_error',
-
-            __('API Key is required', 'textdomain'),
-
+            'webbersaicg_options',
+            'webbersaicg_api_key_error',
+            esc_html__('API Key is required', 'webbersai-product-content-generator'),
             'error'
-
         );
-
-        // Remove the invalid API key from the options
-
-        $options['wacg_api_key'] = '';
-
+        $options['webbersaicg_api_key'] = '';
     }
-
     return $options;
-
 }
 
 // Render AI model field
+function webbersaicg_ai_model_render() {
+    $options = get_option('webbersaicg_options', []); // Default to empty array if option is false
+    $endpoint = isset($options['webbersaicg_endpoint_url']) ? $options['webbersaicg_endpoint_url'] : '';
+    $openai_models = [
+        'gpt-4o' => 'gpt-4o',
+        'gpt-4-turbo' => 'gpt-4-turbo',
+        'gpt-3.5-turbo' => 'gpt-3.5-turbo',
+        'dall-e-3' => 'Image - DALL E 3',
+        'dall-e-2' => 'Image - DALL E 2'
+    ];
 
-function wacg_ai_model_render() {
-
-    $options = get_option('wacg_options');
-
+    $openrouter_models = [
+        'openrouter/auto' => 'Auto (best for prompt)',
+        'nousresearch/nous-capybara-7b:free' => 'Nous: Capybara 7B (free)',
+        'openchat/openchat-7b:free' => 'OpenChat 3.5 (free)',
+        'gryphe/mythomist-7b:free' => 'MythoMist 7B (free)',
+        'undi95/toppy-m-7b:free' => 'Toppy M 7B (free)',
+        'openrouter/cinematika-7b:free' => 'Cinematika 7B (alpha) (free)',
+        'google/gemma-7b-it:free' => 'Google: Gemma 7B (free)',
+        'meta-llama/llama-3-8b-instruct:free' => 'Meta: Llama 3 8B Instruct (free)',
+        'microsoft/phi-3-medium-128k-instruct:free' => 'Phi-3 Medium Instruct (free)',
+        'mistralai/mistral-7b-instruct:free' => 'Mistral AI Model'
+    ];
     ?>
-
-    <select name="wacg_options[wacg_ai_model]">
-
-        <option value="openrouter/auto" <?php selected($options['wacg_ai_model'], 'Auto (best for prompt)'); ?>>Auto (best for prompt)</option>
-
-        <option value="nousresearch/nous-capybara-7b:free" <?php selected($options['wacg_ai_model'], 'nousresearch/nous-capybara-7b:free'); ?>>Nous: Capybara 7B (free)</option>
-
-        <option value="openchat/openchat-7b:free" <?php selected($options['wacg_ai_model'], 'openchat/openchat-7b:free'); ?>>OpenChat 3.5 (free)</option>
-
-        <option value="gryphe/mythomist-7b:free" <?php selected($options['wacg_ai_model'], 'gryphe/mythomist-7b:free'); ?>>MythoMist 7B (free)</option>
-
-        <option value="undi95/toppy-m-7b:free" <?php selected($options['wacg_ai_model'], 'undi95/toppy-m-7b:free'); ?>>Toppy M 7B (free)</option>
-
-        <option value="openrouter/cinematika-7b:free" <?php selected($options['wacg_ai_model'], 'openrouter/cinematika-7b:free'); ?>>Cinematika 7B (alpha) (free)</option>
-
-        <option value="google/gemma-7b-it:free" <?php selected($options['wacg_ai_model'], 'google/gemma-7b-it:free'); ?>>Google: Gemma 7B (free)</option>
-
-        <option value="meta-llama/llama-3-8b-instruct:free" <?php selected($options['wacg_ai_model'], 'meta-llama/llama-3-8b-instruct:free'); ?>>Meta: Llama 3 8B Instruct (free)</option>
-
-        <option value="microsoft/phi-3-medium-128k-instruct:free" <?php selected($options['wacg_ai_model'], 'microsoft/phi-3-medium-128k-instruct:free'); ?>>Phi-3 Medium Instruct (free)</option>
-
-        <option value="mistralai/mistral-7b-instruct:free" <?php selected($options['wacg_ai_model'], 'mistralai/mistral-7b-instruct:free'); ?>>Mistral AI Model</option>
-
-      
-
+    <select name="webbersaicg_options[webbersaicg_ai_model]" id="webbersaicg_ai_model">
+        <?php
+		if ($endpoint === 'https://api.openai.com/v1/chat/completions') {
+            foreach ($openai_models as $value => $label) {
+                echo '<option value="' . esc_attr($value) . '" ' . (isset($options['webbersaicg_ai_model']) ? selected($options['webbersaicg_ai_model'], $value, false) : '') . '>' . esc_html($label) . '</option>';
+            }
+        } else {
+            foreach ($openrouter_models as $value => $label) {
+                echo '<option value="' . esc_attr($value) . '" ' . (isset($options['webbersaicg_ai_model']) ? selected($options['webbersaicg_ai_model'], $value, false) : '') . '>' . esc_html($label) . '</option>';
+            }
+        }
+        ?>
     </select>
-
     <?php
-
 }
-
-
 
 // Render endpoint URL field
-
-function wacg_endpoint_url_render() {
-
-    $options = get_option('wacg_options');
-
+function webbersaicg_endpoint_url_render() {
+    $options = get_option('webbersaicg_options', []); // Default to empty array if the option does not exist
     $endpoint_urls = [
-
-        'https://openrouter.ai/api/v1/chat/completions' => 'OpenRouter AI',
-
-        //'https://api.openai.com/v1/chat/completions' => 'OpenAI'
-
+        'https://api.openai.com/v1/chat/completions' => 'OpenAI',
+        'https://openrouter.ai/api/v1/chat/completions' => 'OpenRouter AI'
     ];
-
+    
+    // Check if the key exists, and set a default value if not
+    $selected_endpoint = isset($options['webbersaicg_endpoint_url']) ? $options['webbersaicg_endpoint_url'] : '';
     ?>
-
-    <select name="wacg_options[wacg_endpoint_url]">
-
+    <select name="webbersaicg_options[webbersaicg_endpoint_url]" id="webbersaicg_endpoint_url">
         <?php foreach ($endpoint_urls as $url => $label) : ?>
-
-            <option value="<?php echo esc_attr($url); ?>" <?php selected($options['wacg_endpoint_url'], $url); ?>>
-
+            <option value="<?php echo esc_attr($url); ?>" <?php selected($selected_endpoint, $url); ?>>
                 <?php echo esc_html($label); ?>
-
             </option>
-
         <?php endforeach; ?>
-
     </select>
-
     <?php
-
 }
-
-
-
-// Render language field
-
-function wacg_language_render() {
-
-    $options = get_option('wacg_options');
-
-    $languages = [
-
-        'en' => 'English',
-
-        'es' => 'Spanish',
-
-        'fr' => 'French',
-
-        'de' => 'German',
-
-		'ab' => 'Arabic',
-
-        'kr' => 'Korean',
-
-        'po' => 'Portuguese',
-
-        'ro' => 'Romanian',
-
-        'ru' => 'Russian',
-
-        'hi' => 'Hindi',
-
-        'ta' => 'Tamil'
-
-        
-
-
-
-		
-
-    ];
-
-    ?>
-
-    <select name="wacg_options[wacg_language]">
-
-        <?php foreach ($languages as $code => $language) : ?>
-
-            <option value="<?php echo esc_attr($code); ?>" <?php selected($options['wacg_language'], $code); ?>>
-
-                <?php echo esc_html($language); ?>
-
-            </option>
-
-        <?php endforeach; ?>
-
-    </select>
-
-    <?php
-
-}
-
-
 
 // Render API key field
-
-function wacg_api_key_render() {
-
-    $options = get_option('wacg_options');
-
+function webbersaicg_api_key_render() {
+    $options = get_option('webbersaicg_options', []); // Default to empty array
+    $api_key = isset($options['webbersaicg_api_key']) ? $options['webbersaicg_api_key'] : '';
     ?>
-
-    <input type="text" name="wacg_options[wacg_api_key]" value="<?php echo esc_attr($options['wacg_api_key']); ?>" required />
-
-	   <p>
-
-        <?php _e('Create your API key here:', 'textdomain'); ?> 
-
+    <input type="text" name="webbersaicg_options[webbersaicg_api_key]" value="<?php echo esc_attr($api_key); ?>" required />
+    <p>
+        <?php esc_html_e('Create your API key here:', 'webbersai-product-content-generator'); ?> 
         <a href="https://openrouter.ai/">OpenRouter.ai</a>, 
-
-       <!-- <a href="https://platform.openai.com/signup">OpenAI</a>-->
-
+        <a href="https://platform.openai.com/signup">OpenAI</a>
     </p>
-
     <?php
-
 }
 
-
-
-// Display the settings page
-
-function wacg_settings_page() {
-
+// Render Organization ID field
+function webbersaicg_organization_id_render() {
+    $options = get_option('webbersaicg_options', []); // Default to empty array
+    $organization_id = isset($options['webbersaicg_organization_id']) ? $options['webbersaicg_organization_id'] : '';
     ?>
-
-    <form action="options.php" method="post">
-
-        <h1><?php _e('Woocommerce AI Product Content Generator Settings', 'textdomain'); ?></h1>
-
-        <?php
-
-        settings_fields('wacg_options_group');
-
-        do_settings_sections('wacg-settings');
-
-        submit_button();
-
-        ?>
-
-    </form>
-
-	<?php settings_errors(); // Display settings errors or success messages ?>
-
+    <div id="organization_id_field" style="display: none;">
+        <div style="font-weight:500"><label for="webbersaicg_organization_id"><?php esc_html_e('Organization ID', 'webbersai-product-content-generator'); ?></label></div>
+        <input type="text" name="webbersaicg_options[webbersaicg_organization_id]" value="<?php echo esc_attr($organization_id); ?>" />
+        <p>
+            <?php esc_html_e('Create your Organization ID here:', 'webbersai-product-content-generator'); ?> 
+            <a href="https://platform.openai.com/signup">OpenAI</a>
+        </p>
+    </div>
     <?php
-
 }
 
-?>
+// Render language field
+function webbersaicg_language_render() {
+    $options = get_option('webbersaicg_options', []); // Default to empty array
+    $language = isset($options['webbersaicg_language']) ? $options['webbersaicg_language'] : 'en'; // Default to 'en'
+    ?>
+    <select name="webbersaicg_options[webbersaicg_language]" id="webbersaicg_language">
+        <option value="en" <?php selected($language, 'en'); ?>>English</option>
+        <option value="es" <?php selected($language, 'es'); ?>>Spanish</option>
+        <option value="fr" <?php selected($language, 'fr'); ?>>French</option>
+        <option value="de" <?php selected($language, 'de'); ?>>German</option>
+        <!-- Add more languages if needed -->
+    </select>
+    <?php
+}
 
+// Admin settings page content
+function webbersaicg_settings_page() {
+    ?>
+    <div class="wrap">
+        <h1><?php esc_html_e('Webbersai Product Content Generator Settings', 'webbersai-product-content-generator'); ?></h1>
+        <form action="options.php" method="post">
+            <?php
+            settings_fields('webbersaicg_options_group');
+            do_settings_sections('webbersaicg-settings');
+            submit_button();
+            ?>
+        </form>
+    </div>
+    <?php
+}
